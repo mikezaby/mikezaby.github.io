@@ -2,7 +2,7 @@ import { postsMetadata } from "@/lib/posts";
 import Link from "next/link";
 import Head from "next/head";
 
-export default async function Home() {
+export default async function Posts() {
   const posts = await postsMetadata();
 
   return (
