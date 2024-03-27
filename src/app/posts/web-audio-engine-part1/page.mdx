@@ -1,0 +1,83 @@
+export const metadata = {
+  title: "Web Audio Engine Part 1 - Story & Engine Explanation",
+  description: "This is the story about how I started be involved with audio programming, and the first part of a series of posts about how to implement an data-driven audio engine with web audio",
+  date: "Mar 24, 2024",
+};
+
+# Web Audio Engine Part 1 - Story & Engine Explanation
+
+## Welcome
+
+Welcome to the first post in a series about my journey into audio programming and the process of building a data-driven audio engine with WebAudio.
+
+## Preface
+
+When I started programming, I always enjoyed having both small and large personal projects that brought me pleasure and knowledge.
+After working professionally for several years, this need began to fade, and I started seeking new hobbies.
+In my younger days, I played drums and was in a few bands until I finished high school.
+Then, I went to university for computer science, sold my drum kit, bought my first computer, and my interests shifted entirely towards computers.
+
+In the first few years, my hobbies were limited to playing games and learning about computer hardware, but gradually, I began programming.
+Eventually, programming became my sole interest. I started working professionally as a developer at 25, and by my thirties, programming was almost my only interest.
+However, there was a desire within me to be involved in other things and not be defined solely by my work.
+Thus, I returned to music. During this period of my life, I was mostly listening to electronic music, which inspired me to want to produce my own music.
+For this reason, I started taking lessons in keyboards and music theory at a conservatory.
+Music also offered me the opportunity to have a broader and more social hobby.
+The first few years of revisiting music changed my perception about many things, including a desire to not be so tech-centric anymore.
+
+I stopped programming in my free time and instead wanted to watch movies, listen to more music, produce music, and play keyboards.
+My journey back to music had its ups and downs, and it is still ongoing.
+Two years ago, I started thinking about how wonderful it would be if I could merge music with programming.
+With my background as a web developer, it was easier for me to start experimenting with WebAudio and slowly understand its concepts.
+
+This process reignited my passion for projects, more specifically for audio application projects, leading us to the real topic of this post.
+
+## Prerequisites
+
+This post assumes familiarity with the Web Audio API and TypeScript, as it's not an introduction to these technologies.
+However, you'll gain insights into their basics or little more advanced technics through our discussion.
+Should you find yourself needing more background information at any point, I encourage you to consult the official documentation
+of [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+and [TypeScript](https://www.typescriptlang.org/docs/).
+
+## The idea of the engine
+
+I had a lot of ideas for applications but knew nothing about audio programming.
+So, I looked for a project that felt doable for me.
+That's why I started with WebAudio, as it felt more comfortable for me as a web developer.
+
+I decided to make an audio engine without a UI first.
+This way, I could build my ideas on top of it later.
+I thought about making the engine modular, so I could easily manage it with something like Redux for state management.
+A data-driven approach would let me hide the complex parts under the hood and play with the core library.
+I could also re-write it to different languages, that is something that I want to experiment in the future.
+
+I wanted a very simple API that would let me control the engine well.
+I had other applications in mind, like [Pure Data](https://puredata.info/) and [VCV Rack](https://vcvrack.com/).
+I don't want to compete with these robust products or build a feature-complete product, but having them in mind helps as a guide to my learning journey and the initial product.
+
+While I want to have an engine separated from the UI, it helps me to think of a UI implementation of the engine's capabilities.
+So this is how it looks like:
+![simple_patch](/simple_patch.png)
+
+To achieve building a UI over the engine like the previous image, we would need an engine API like this:
+
+- add module
+- update module
+- remove module
+- add route
+- remove route
+- start
+- stop
+
+## Summary
+
+In this post, we've explored the fundamental ideas behind the engine and some of the key decisions made during its conceptual phase.
+We've discussed my motivation for creating a modular audio engine without a UI, the desire for a data-driven approach, and how these choices align with the broader goal of experimenting with WebAudio and potentially other programming languages.
+
+In the next post, we will proceed into the implementation details, including:
+
+- The basic structure of the project: laying out how the project is organized to facilitate both development and future expansion.
+- Implementing a base module that encapsulates the common logic shared by all modules.
+- Developing a few specific modules (such as Oscillator, Volume, and Master) that inherit from the base module. These modules will demonstrate how to implement the unique functionality required by different types of audio processing units.
+- Exposing an API that allows for the management of these modules, including adding, updating, and removing modules to dynamically alter the audio processing chain.
