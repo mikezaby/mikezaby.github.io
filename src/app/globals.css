@@ -76,12 +76,13 @@
 }
 
 .container {
+  @apply px-4;
   max-width: 720px;
 }
 
 /* Blog */
 .markdown-body {
-  @apply prose prose-lg mx-auto px-4 py-8 text-gray-700 dark:text-gray-300;
+  @apply prose prose-lg mx-auto py-8 text-gray-700 dark:text-gray-300;
 
   h1,
   h2,
