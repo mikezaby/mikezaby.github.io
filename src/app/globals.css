@@ -75,9 +75,28 @@
   }
 }
 
+/* Start custom css */
+
 .container {
   @apply px-4;
   max-width: 720px;
+}
+
+.separator::before {
+  max-width: 800px;
+  content: "";
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: calc(100% + 4rem); /* Extend the length beyond the content width */
+  height: 1px; /* Thickness of the separator */
+  background: linear-gradient(
+    to right,
+    transparent,
+    #cbd5e1 10%,
+    #cbd5e1 90%,
+    transparent
+  );
 }
 
 /* Blog */

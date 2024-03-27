@@ -20,6 +20,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} flex min-h-screen flex-col`}>
         <Header />
+
+        <div className="separator" />
         <main className="container mt-8 flex-grow">{children}</main>
         <Footer />
       </body>
