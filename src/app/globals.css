@@ -75,10 +75,13 @@
   }
 }
 
+.container {
+  max-width: 720px;
+}
+
 /* Blog */
 .markdown-body {
   @apply prose prose-lg mx-auto px-4 py-8 text-gray-700 dark:text-gray-300;
-  max-width: 65ch; /* Limits the line length for readability */
 
   h1,
   h2,
@@ -91,20 +94,20 @@
   }
 
   h1 {
-    @apply text-3xl mt-10 mb-4;
+    @apply mb-4 mt-10 text-3xl;
   }
 
   h2 {
-    @apply text-2xl mt-8 mb-4;
+    @apply mb-4 mt-8 text-2xl;
   }
 
   h3 {
-    @apply text-xl mt-6 mb-3;
+    @apply mb-3 mt-6 text-xl;
   }
 
   p,
   li {
-    @apply leading-7 mb-4;
+    @apply mb-4 leading-7;
   }
 
   a {
@@ -121,7 +124,7 @@
   }
 
   blockquote {
-    @apply border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400;
+    @apply border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400;
     @apply border-l-4 pl-4 italic;
   }
 }

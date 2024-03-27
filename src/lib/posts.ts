@@ -3,7 +3,7 @@ import path from "path";
 
 const postsDirectory = path.join(process.cwd(), "src/app/posts");
 
-export interface PostMetadata {
+export interface IPostMetadata {
   id: string;
   title: string;
   date: string;
@@ -12,7 +12,7 @@ export interface PostMetadata {
 
 const BLACKLIST_FILES = ["layout.tsx", "page.tsx"];
 
-export async function postsMetadata(): Promise<PostMetadata[]> {
+export async function postsMetadata(): Promise<IPostMetadata[]> {
   const fileNames = fs.readdirSync(postsDirectory).filter((filename) => {
     return !BLACKLIST_FILES.includes(filename);
   });
