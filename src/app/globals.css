@@ -82,7 +82,7 @@
 
 /* Blog */
 .markdown-body {
-  @apply prose prose-lg mx-auto py-8 text-gray-700 dark:text-gray-300;
+  @apply prose prose-lg mx-auto text-gray-700 dark:text-gray-300;
 
   h1,
   h2,
