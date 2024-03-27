@@ -16,6 +16,12 @@ export default function Posts(props: { posts: IPostMetadata[] }) {
           </Link>
           <div className="text-gray-600">{date}</div>
           <div className="text-gray-600">{description}</div>
+          <Link
+            href={`/posts/${id}`}
+            className="block text-right text-sm text-blue-500 hover:text-blue-700"
+          >
+            Read more
+          </Link>
         </li>
       ))}
     </ul>
