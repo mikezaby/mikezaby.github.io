@@ -50,19 +50,26 @@ That's why I started with WebAudio, as it felt more comfortable for me as a web 
 
 I decided to make an audio engine without a UI first.
 This way, I could build my ideas on top of it later.
-I thought about making the engine modular, so I could easily manage it with something like Redux for state management.
+I thought about making a modular data-driven engine, so I could easily manage it with something like Redux for state management.
 A data-driven approach would let me hide the complex parts under the hood and play with the core library.
 I could also re-write it to different languages, that is something that I want to experiment in the future.
 
 I wanted a very simple API that would let me control the engine well.
 I had other applications in mind, like [Pure Data](https://puredata.info/) and [VCV Rack](https://vcvrack.com/).
-I don't want to compete with these robust products or build a feature-complete product, but having them in mind helps as a guide to my learning journey and the initial product.
+I don't want to compete with these robust products or build a feature-complete product, but having them in mind helps as a guide to my learning process and the initial product.
 
 While I want to have an engine separated from the UI, it helps me to think of a UI implementation of the engine's capabilities.
 So this is how it looks like:
 <Image src={SimplePatchImg} />
 
+Let's explain a little about the elements we have in this image:
 
+- 3 modules: Oscillator, Volume, and Master.
+- Some connections between the modules.
+- A sidebar with all the available modules that includes drag-and-drop functionality.
+- A start/stop button on the top.
+
+This is a very simple patch designed to illustrate the functionality.
 To achieve building a UI over the engine like the previous image, we would need an engine API like this:
 
 - add module
