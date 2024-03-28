@@ -1,4 +1,5 @@
 import fs from "fs";
+import { StaticImageData } from "next/image";
 import path from "path";
 
 const postsDirectory = path.join(process.cwd(), "src/app/posts");
@@ -8,6 +9,7 @@ export interface IPostMetadata {
   title: string;
   date: string;
   description: string;
+  cover: StaticImageData;
 }
 
 const BLACKLIST_FILES = ["layout.tsx", "page.tsx"];
@@ -19,7 +21,6 @@ export async function postsMetadata(): Promise<IPostMetadata[]> {
 
   const allPostsData = await Promise.all(
     fileNames.map(async (fileName) => {
-      console.log(fileName);
       const { metadata } = await import(`@/app/posts/${fileName}/page.mdx`);
       return {
         id: fileName,
