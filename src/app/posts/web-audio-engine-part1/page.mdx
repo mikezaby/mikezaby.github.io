@@ -1,3 +1,5 @@
+import SimplePatchImg from "./simple_patch.png"
+
 export const metadata = {
   title: "Web Audio Engine Part 1 - Story & Engine Explanation",
   description: "This is the story about how I started be involved with audio programming, and the first part of a series of posts about how to implement an data-driven audio engine with web audio",
@@ -58,7 +60,8 @@ I don't want to compete with these robust products or build a feature-complete p
 
 While I want to have an engine separated from the UI, it helps me to think of a UI implementation of the engine's capabilities.
 So this is how it looks like:
-![simple_patch](/simple_patch.png)
+<Image src={SimplePatchImg} />
+
 
 To achieve building a UI over the engine like the previous image, we would need an engine API like this:
 
