@@ -29,6 +29,7 @@ export async function postsMetadata(): Promise<IPostMetadata[]> {
     fileNames.map(async (fileName) => {
       const { metadata } = await import(`@/app/posts/${fileName}/page.mdx`);
       return {
+        id: fileName,
         ...metadata,
       };
     }),
