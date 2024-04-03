@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="container flex flex items-center items-center justify-between py-4 dark:bg-gray-800">
+    <header className="container flex items-center justify-between py-4 dark:bg-gray-800">
       <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
         <Link href="/">Mike Zaby</Link>
       </h1>
