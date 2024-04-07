@@ -12,8 +12,6 @@ export interface IPostMetadata {
   cover: StaticImageData;
 }
 
-const BLACKLIST_FILES = ["layout.tsx", "page.tsx"];
-
 export async function postMetadata(filename: string): Promise<IPostMetadata> {
   const { metadata } = await import(`@/app/posts/${filename}/page.mdx`);
 
@@ -21,9 +19,10 @@ export async function postMetadata(filename: string): Promise<IPostMetadata> {
 }
 
 export async function postsMetadata(): Promise<IPostMetadata[]> {
-  const fileNames = fs.readdirSync(postsDirectory).filter((filename) => {
-    return !BLACKLIST_FILES.includes(filename);
-  });
+  const fileNames = fs
+    .readdirSync(postsDirectory, { withFileTypes: true })
+    .filter((filename) => filename.isDirectory())
+    .map((dir) => dir.name);
 
   const allPostsData = await Promise.all(
     fileNames.map(async (fileName) => {
