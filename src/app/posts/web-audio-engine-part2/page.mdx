@@ -194,11 +194,52 @@ interface IVolumeProps {
 interface IVolume extends IModule<ModuleType.Volume> {}
 ```
 
-
+After we will proceed to the implementation of the abstract class `Module`.
+To support our data-driven approach, we have to implement two functions, `props` and `serialize`.
 - props: we need a general props function that will get the props of modules, we could pass a partial of the props or the whole props.
   After this the function will iterate the props and call the set[attributeName], for examble setFrequency.
   We want this so we could abstract the functionality of setProps for all modules.
-- serialize: this function should give a json like object like the one in structure code block
+- serialize: this function returns the data of the module instance, and the data-structure of this is the IModule.
+
+```ts
+abstract class Module<T extends ModuleType>
+  implements IModule<T>
+{
+  id: string;
+  name: string;
+  moduleType: T;
+  protected _props!: ModuleTypeToPropsMapping[T];
+
+  constructor(params: Optional<IModule<T>, "id">) {
+    const { id, name, moduleType, props } = params;
+
+    this.id = id || uuidv4();
+    this.name = name;
+    this.moduleType = moduleType;
+    this._props = {} as ModuleTypeToPropsMapping[T];
+    this.props = props;
+  }
+
+  get props(): ModuleTypeToPropsMapping[T] {
+    return this._props;
+  }
+
+  set props(value: Partial<ModuleTypeToPropsMapping[T]>) {
+    this._props = { ...this._props, ...value };
+    Object.assign(this, value);
+  }
+
+  serialize(): IModule<T> {
+    return {
+      id: this.id,
+      name: this.name,
+      moduleType: this.moduleType,
+      props: this.props,
+    };
+  }
+}
+
+```
 
 ## The Modules
 

@@ -136,7 +136,15 @@
 
   ul,
   ol {
-    @apply list-inside list-disc pl-5;
+    @apply list-inside list-disc pl-5 marker:text-gray-700;
+
+    ul {
+      @apply list-none pl-5;
+
+      li:before {
+        @apply mr-4 content-['-'];
+      }
+    }
   }
 
   ol {
