@@ -12,7 +12,7 @@ export function useDisqusConfig() {
   }, [pathname]);
 
   return {
-    url: `${WEBSITE}:${pathname}`,
+    url: `${WEBSITE}${pathname}`,
     identifier,
     language: "en_US",
   };
