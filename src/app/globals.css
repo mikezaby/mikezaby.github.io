@@ -102,6 +102,7 @@
 /* Blog */
 .markdown-body {
   @apply prose prose-lg mx-auto text-gray-700 dark:text-gray-300;
+  margin-bottom: 80px;
 
   h1,
   h2,

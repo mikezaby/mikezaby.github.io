@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const disqusConfig = useDisqusConfig();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       <MDXLayout>{children}</MDXLayout>
 
       <DiscussionEmbed shortname={DISCUSS_SHORTNAME} config={disqusConfig} />
