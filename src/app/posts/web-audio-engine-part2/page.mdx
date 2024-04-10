@@ -16,13 +16,13 @@ export const metadata = {
 
 ## Recap
 
-In the [previous post](/posts/web-audio-engine-part1), we explored the fundamental ideas behind the engine, discussing its core functionality and the API at a high level. 
-In this post, we will define the file and data structure of the project, setting the stage for us to systematically develop our features, one by one. 
+In the [previous post](/posts/web-audio-engine-part1), we explored the fundamental ideas behind the engine, discussing its core functionality and the API at a high level.
+In this post, we will define the file and data structure of the project, setting the stage for us to systematically develop our features, one by one.
 The first feature we will tackle is module management, which includes the ability to create, update, and remove modules.
 
 ## But what is a module
 
-We can think of modules like small functions that have the capability to be chained together. 
+We can think of modules like small functions that have the capability to be chained together.
 For example, consider a string generator function where we perform some string manipulation afterward:
 
 ```js
@@ -31,16 +31,18 @@ function stringGenerator() {
 }
 stringGenerator().trim().toUpperCase();
 // Expected output: "MY MODULAR SYNTHESIZER"
-
 ```
 
 In the context of modular synthesizers, let's imagine we have an oscillator as a generator module that produces a sine wave signal, with its signal values ranging between the minimum and maximum (-1 to 1).
+
 <Image src={SineWaveImg} />
 
 Next, we might want to apply a gain to this signal, amplifying it by 5, which results in an adjusted waveform.
+
 <Image src={SineWaveMultImg} />
 
 Modules have inputs and outputs to achieve this. Here is a visualization of the modules from our previous example.
+
 <Image src={SineWaveMultDiagramImg} />
 
 Our engine supports two kinds of I/O: Audio and MIDI.
@@ -69,7 +71,6 @@ While we're not going to work with audio at this step, it is a very important on
 
 This is what our file structure will look like at the end of this post:
 
-
 ```
 - src
   - index.ts
@@ -88,12 +89,11 @@ Lets explain this files and folders.
 
 `Engine.ts` exposes all the functionality that are available for the engine users.
 
-The `core` folder is where we place various functionalities that our modules will use. 
-Under the `core` folder, there is a file named `Module.ts`. 
+The `core` folder is where we place various functionalities that our modules will use.
+Under the `core` folder, there is a file named `Module.ts`.
 This is an abstract class that captures the essence of modules and is inherited by all the modules.
 
 The modules folder contains all of our specific module implementations.
-
 
 ## Data Structure
 
@@ -174,7 +174,6 @@ interface IModule<T extends ModuleType> {
   moduleType: T;
   props: ModuleTypeToPropsMapping[T];
 }
-
 ```
 
 As shown above, we start by defining the ModuleType enum, then map the type to actual module props.
@@ -189,7 +188,6 @@ interface IOscillatorProps {
 }
 
 interface IOscillator extends IModule<ModuleType.Oscillator> {}
-
 ```
 
 ```ts
@@ -200,15 +198,14 @@ interface IVolumeProps {
 interface IVolume extends IModule<ModuleType.Volume> {}
 ```
 
-Next, we will start implementating the abstract Module class. 
+Next, we will start implementating the abstract Module class.
 To support our data-driven approach, we need to implement two functions, props and serialize:
+
 - props: We define getter and setter functions. The getter returns the module's `props`, and the setter accepts a Partial of props, allowing updates to all or specific props.
 - serialize: This function returns the instance's data, structured according to the `IModule`.
 
 ```ts
-abstract class Module<T extends ModuleType>
-  implements IModule<T>
-{
+abstract class Module<T extends ModuleType> implements IModule<T> {
   id: string;
   name: string;
   moduleType: T;
@@ -241,7 +238,6 @@ abstract class Module<T extends ModuleType>
     };
   }
 }
-
 ```
 
 Two additional points need clarification, as they were not mentioned earlier: `Optional` and `uuidv4`.
@@ -255,10 +251,9 @@ We have defined this under `utils/types`.
 type Optional<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>;
 ```
 
-
 ## The Modules
 
-The modules will inherit from `core/Module` and implement the additional functionality each one requires. 
+The modules will inherit from `core/Module` and implement the additional functionality each one requires.
 For the moment, we will implement only the Oscillator and Volume modules.
 Given the data structures we defined earlier, their implementation at this stage is relatively straightforward.
 
@@ -296,7 +291,7 @@ interface IChildParams<T extends ModuleType> {
 
 ## The Engine
 
-Having implemented almost everything needed at this step, we are now ready to implement the Engine. 
+Having implemented almost everything needed at this step, we are now ready to implement the Engine.
 We will define the Engine as a singleton, with its only current property being the modules.
 
 ```ts
@@ -341,6 +336,7 @@ addModule<T extends ModuleType>(params: ICreateParams) {
 ```
 
 Usage:
+
 ```ts
 const osc = Engine.addModule<ModuleType.Oscillator>({
   name: "Osc",
@@ -376,6 +372,7 @@ function createModule(params: ICreateParams): AnyModule {
 ### updateModule
 
 First, define the function parameters interface:
+
 ```ts
 interface IUpdateModule<T extends ModuleType> {
   id: string;
@@ -409,6 +406,7 @@ findModule(id: string) {
 ```
 
 Usage:
+
 ```ts
 const osc = Engine.addModule<ModuleType.Oscillator>({
   id: 1,
@@ -416,7 +414,6 @@ const osc = Engine.addModule<ModuleType.Oscillator>({
   changes: { props: { frequency: 880 } },
 });
 ```
-
 
 ### removeModule
 
@@ -429,7 +426,7 @@ removeModule(id: string) {
 
 ## Repository
 
-There is a repository containing the code we've discussed here, which I'm developing alongside writing this series of posts. 
+There is a repository containing the code we've discussed here, which I'm developing alongside writing this series of posts.
 The goal is to create a branch for each post. This way, you can explore the entire codebase and grasp the project's scope without being overwhelmed by code not yet covered.
 
 You can find the branch related to this post here: [https://github.com/mikezaby/bliblik_raw_engine/tree/basic-module](https://github.com/mikezaby/bliblik_raw_engine/tree/basic-module)
