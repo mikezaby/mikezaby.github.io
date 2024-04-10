@@ -9,7 +9,7 @@ export default function Posts(props: { posts: IPostMetadata[] }) {
     <ul>
       {posts.map(({ id, title, date, description, cover }) => (
         <li key={id} className="border-b border-gray-200 py-4">
-          {cover && <Image src={cover} alt="cover" />}
+          {cover && <Image src={cover} alt="cover" className="mb-4" />}
           <Link
             href={`/posts/${id}`}
             className="text-xl text-blue-500 hover:text-blue-700"
