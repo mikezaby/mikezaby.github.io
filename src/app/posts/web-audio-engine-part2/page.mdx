@@ -1,0 +1,439 @@
+import SineWaveImg from "./sinewave.jpg";
+import SineWaveMultImg from "./sinewave_mult.jpg";
+import SineWaveMultDiagramImg from "./sinewave_mult_diagram.png";
+import CoverImg from "./cover.png";
+
+export const metadata = {
+  title:
+    "Web Audio Engine Part 2 - Shaping the Core of Our Modular Audio Engine",
+  description:
+    "In this part we will explore the file and data structure of the engine, and how to manage modules (create, update, remove)",
+  date: "Apr 10, 2024",
+  cover: CoverImg,
+};
+
+# Web Audio Engine Part 2 - Shaping the Core of Our Modular Audio Engine
+
+## Recap
+
+In the [previous post](/posts/web-audio-engine-part1), we explored the fundamental ideas behind the engine, discussing its core functionality and the API at a high level. 
+In this post, we will define the file and data structure of the project, setting the stage for us to systematically develop our features, one by one. 
+The first feature we will tackle is module management, which includes the ability to create, update, and remove modules.
+
+## But what is a module
+
+We can think of modules like small functions that have the capability to be chained together. 
+For example, consider a string generator function where we perform some string manipulation afterward:
+
+```js
+function stringGenerator() {
+  return "  My modular synthesizer   ";
+}
+stringGenerator().trim().toUpperCase();
+// Expected output: "MY MODULAR SYNTHESIZER"
+
+```
+
+In the context of modular synthesizers, let's imagine we have an oscillator as a generator module that produces a sine wave signal, with its signal values ranging between the minimum and maximum (-1 to 1).
+<Image src={SineWaveImg} />
+
+Next, we might want to apply a gain to this signal, amplifying it by 5, which results in an adjusted waveform.
+<Image src={SineWaveMultImg} />
+
+Modules have inputs and outputs to achieve this. Here is a visualization of the modules from our previous example.
+<Image src={SineWaveMultDiagramImg} />
+
+Our engine supports two kinds of I/O: Audio and MIDI.
+We will elaborate more about IO in the next post.
+
+Let's preview some modules that we will implement in our Engine:
+
+Audio:
+
+- Generator, generates audio signal
+  - Oscillator, it generates sound of sine, triangle, square waves in a desired frequency
+- Processing
+  - Volume, it adjust the loudness of the input signal
+  - Filter, it applies frequency filtering to the input signal
+
+Midi:
+
+- Sequencer, it generates midi events over time
+
+## Preparing for development
+
+At the beginning, we want to shape our project and figure out how to create, update, or remove a module.
+While we're not going to work with audio at this step, it is a very important one because we will structure the foundation of this library, see how data flows through the modules, and prepare our code for the next steps.
+
+## File Structure
+
+This is what our file structure will look like at the end of this post:
+
+
+```
+- src
+  - index.ts
+  - Engine.ts
+  - core
+    - index.ts
+    - Module.ts
+  - modules
+    - index.ts
+    - Oscillator.ts
+    - Volume.ts
+    - Master.ts
+```
+
+Lets explain this files and folders.
+
+`Engine.ts` exposes all the functionality that are available for the engine users.
+
+The `core` folder is where we place various functionalities that our modules will use. 
+Under the `core` folder, there is a file named `Module.ts`. 
+This is an abstract class that captures the essence of modules and is inherited by all the modules.
+
+The modules folder contains all of our specific module implementations.
+
+
+## Data Structure
+
+We want to make the minimum required data structure that will describe our modules and their current state.
+This includes the following fields:
+
+- id, uuidv4
+- name, to help us organize our modules
+- moduleType, the module type (Oscillator, Volume, etc.)
+- props, each module type, has it own props, for example the Oscillator has frequency and wave, and the Volume has volume.
+
+Here is how looks like:
+
+```ts
+{
+  id: string,
+  name: string,
+  type: ModuleType,
+  props: Object,
+}
+```
+
+## Module management:
+
+This section outlines how users are expected to interact with the engine.
+
+- Add module
+
+```ts
+const volume = Engine.addModule({
+  name: "Vol",
+  type: "Volume",
+  props: { volume: -10 },
+});
+const osc = Engine.addModule({
+  name: "Osc",
+  type: "Oscillator",
+  props: { wave: "sine", frequency: 440 },
+});
+```
+
+- Update module
+
+```ts
+const volume = Engine.updateModule({
+  id: 1
+  changes: { props: { volume: -10 } },
+});
+```
+
+- Remove module
+
+```ts
+Engine.removeModule(1);
+```
+
+## The Base Module class
+
+Having discussed the engine's concept, file and data structures, and how users can manage modules, it's time to dive deeper into the code and examine our implementation of the abstract Module class.
+
+Previously, we outlined a data structure capable of serving every module we build, with the flexibility of the props attribute.
+However, our goal is to have a polymorphic data structure that is also type-safe.
+
+```ts
+enum ModuleType {
+  Oscillator = "Oscillator",
+  Volume = "Volume",
+}
+
+interface ModuleTypeToPropsMapping {
+  [ModuleType.Oscillator]: IOscillatorProps;
+  [ModuleType.Volume]: IVolumeProps;
+}
+
+interface IModule<T extends ModuleType> {
+  id: string;
+  name: string;
+  moduleType: T;
+  props: ModuleTypeToPropsMapping[T];
+}
+
+```
+
+As shown above, we start by defining the ModuleType enum, then map the type to actual module props.
+This approach achieves a polymorphic data structure through the use of a ModuleType generic.
+
+To fully understand this concept, let's examine the data structures for Oscillator and Volume:
+
+```ts
+interface IOscillatorProps {
+  wave: OscillatorType;
+  frequency: number;
+}
+
+interface IOscillator extends IModule<ModuleType.Oscillator> {}
+
+```
+
+```ts
+interface IVolumeProps {
+  volume: number;
+}
+
+interface IVolume extends IModule<ModuleType.Volume> {}
+```
+
+Next, we will start implementating the abstract Module class. 
+To support our data-driven approach, we need to implement two functions, props and serialize:
+- props: We define getter and setter functions. The getter returns the module's `props`, and the setter accepts a Partial of props, allowing updates to all or specific props.
+- serialize: This function returns the instance's data, structured according to the `IModule`.
+
+```ts
+abstract class Module<T extends ModuleType>
+  implements IModule<T>
+{
+  id: string;
+  name: string;
+  moduleType: T;
+  protected _props!: ModuleTypeToPropsMapping[T];
+
+  constructor(params: Optional<IModule<T>, "id">) {
+    const { id, name, moduleType, props } = params;
+
+    this.id = id || uuidv4();
+    this.name = name;
+    this.moduleType = moduleType;
+    this._props = {} as ModuleTypeToPropsMapping[T];
+    this.props = props;
+  }
+
+  get props(): ModuleTypeToPropsMapping[T] {
+    return this._props;
+  }
+
+  set props(value: Partial<ModuleTypeToPropsMapping[T]>) {
+    this._props = { ...this._props, ...value };
+  }
+
+  serialize(): IModule<T> {
+    return {
+      id: this.id,
+      name: this.name,
+      moduleType: this.moduleType,
+      props: this.props,
+    };
+  }
+}
+
+```
+
+Two additional points need clarification, as they were not mentioned earlier: `Optional` and `uuidv4`.
+
+`uuidv4` comes from the `uuid` package.
+
+`Optional` is a helper type that allows us to make one or more properties of an interface optional.
+We have defined this under `utils/types`.
+
+```ts
+type Optional<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>;
+```
+
+
+## The Modules
+
+The modules will inherit from `core/Module` and implement the additional functionality each one requires. 
+For the moment, we will implement only the Oscillator and Volume modules.
+Given the data structures we defined earlier, their implementation at this stage is relatively straightforward.
+
+```ts
+const DEFAULT_PROPS: IOscillatorProps = { wave: "sine", frequency: 440 };
+
+class Oscillator extends Module<ModuleType.Oscillator> {
+  constructor(params: IChildParams<ModuleType.Oscillator>) {
+    const props = { ...DEFAULT_PROPS, ...params.props };
+    super({ ...params, props, moduleType: ModuleType.Oscillator });
+  }
+}
+```
+
+```ts
+const DEFAULT_PROPS: IVolumeProps = { volume: 100 };
+
+class Volume extends Module<ModuleType.Volume> {
+  constructor(params: IChildParams<ModuleType.Volume>) {
+    const props = { ...DEFAULT_PROPS, ...params.props };
+    super({ ...params, props, moduleType: ModuleType.Volume });
+  }
+}
+```
+
+The `IChildParams` interface serves as a helper so that we don’t need to redefine similar interfaces for the constructor parameters of the modules repeatedly.
+
+```ts
+interface IChildParams<T extends ModuleType> {
+  id?: string;
+  name: string;
+  props: Partial<ModuleTypeToPropsMapping[T]>;
+}
+```
+
+## The Engine
+
+Having implemented almost everything needed at this step, we are now ready to implement the Engine. 
+We will define the Engine as a singleton, with its only current property being the modules.
+
+```ts
+import { Module, ModuleType } from "./core";
+
+class Engine {
+  private static instance: Engine;
+
+  modules: {
+    [Identifier: string]: Module<ModuleType>;
+  };
+
+  public static getInstance(): Engine {
+    if (!Engine.instance) {
+      Engine.instance = new Engine();
+    }
+
+    return Engine.instance;
+  }
+
+  constructor() {
+    this.modules = {};
+  }
+}
+
+export default Engine.getInstance();
+```
+
+With the Engine set up, we can now implement module management functions.
+
+### addModule
+
+This function creates modules and returns the serialized data of the module, as we intend to expose only the data to users.
+
+```ts
+addModule<T extends ModuleType>(params: ICreateParams) {
+  const module = createModule(params);
+  this.modules[module.id] = module;
+
+  return module.serialize() as IModule<T>;
+}
+```
+
+Usage:
+```ts
+const osc = Engine.addModule<ModuleType.Oscillator>({
+  name: "Osc",
+  type: "Oscillator",
+  props: { wave: "sine", frequency: 440 },
+});
+```
+
+We use `createModule` and `ICreateParams` that be taken from `modules/index`
+This setup ensures params match with the module type.
+
+```ts
+interface ICreateModule<T extends ModuleType> extends IChildParams<T> {
+  moduleType: T;
+}
+
+type ICreateParams =
+  | ICreateModule<ModuleType.Oscillator>
+  | ICreateModule<ModuleType.Volume>;
+
+function createModule(params: ICreateParams): AnyModule {
+  switch (params.moduleType) {
+    case ModuleType.Oscillator:
+      return new Oscillator(params);
+    case ModuleType.Volume:
+      return new Volume(params);
+    default:
+      throw Error(`Unknown moduleType ${params.moduleType}`);
+  }
+}
+```
+
+### updateModule
+
+First, define the function parameters interface:
+```ts
+interface IUpdateModule<T extends ModuleType> {
+  id: string;
+  moduleType: T;
+  changes: Partial<Omit<IChildParams<T>, "id">>;
+}
+```
+
+This approach ensures that we find the module to which the changes apply and maintain only the name and props changes.
+While TypeScript provides a level of type safety, accommodating potential use from JavaScript or type misuse helps make our package more robust.
+
+```ts
+updateModule<T extends ModuleType>(params: IUpdateModule<T>) {
+  const module = this.findModule(params.id);
+  if (module.moduleType !== params.moduleType) {
+    throw Error(
+      `The module id ${params.id} isn't moduleType ${params.moduleType}`,
+    );
+  }
+
+  const updates = pick(params.changes, ["name", "props"]);
+  Object.assign(module, updates);
+
+  return module.serialize() as IModule<T>;
+}
+
+findModule(id: string) {
+  const module = this.modules[id];
+  if (!module) throw Error(`Module ${id} not found`)
+}
+```
+
+Usage:
+```ts
+const osc = Engine.addModule<ModuleType.Oscillator>({
+  id: 1,
+  type: "Oscillator",
+  changes: { props: { frequency: 880 } },
+});
+```
+
+
+### removeModule
+
+```ts
+removeModule(id: string) {
+  delete this.modules[id];
+}
+
+```
+
+## Repository
+
+There is a repository containing the code we've discussed here, which I'm developing alongside writing this series of posts. 
+The goal is to create a branch for each post. This way, you can explore the entire codebase and grasp the project's scope without being overwhelmed by code not yet covered.
+
+You can find the branch related to this post here: [https://github.com/mikezaby/bliblik_raw_engine/tree/basic-module](https://github.com/mikezaby/bliblik_raw_engine/tree/basic-module)
+
+## What's Next
+
+In the next post we will start intergrating WebAudio starting from AudioNode, and we will explore how we could connect modules between them.
