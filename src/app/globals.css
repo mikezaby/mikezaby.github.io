@@ -83,12 +83,12 @@
 }
 
 .separator::before {
-  max-width: 800px;
+  max-width: 720px;
   content: "";
   display: block;
   margin-left: auto;
   margin-right: auto;
-  width: calc(100% + 4rem); /* Extend the length beyond the content width */
+  width: 100%;
   height: 1px; /* Thickness of the separator */
   background: linear-gradient(
     to right,
