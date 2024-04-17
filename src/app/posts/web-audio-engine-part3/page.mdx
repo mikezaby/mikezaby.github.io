@@ -1,0 +1,375 @@
+import CoverImg from "./cover.jpeg";
+import Example from "./Example";
+
+export const metadata = {
+  title: "Web Audio Engine Part 3 - Integrating WebAudio API",
+  description: "It's time to start intergrating WebAudio API to our project!",
+  date: "Apr 17, 2024",
+  cover: CoverImg,
+};
+
+# Web Audio Engine Part 3 - Integrating WebAudio API
+
+In the [previous post](/posts/web-audio-engine-part2), we built the foundation of our Engine, and now we are ready to begin integrating the WebAudio API into our project.
+More specifically, we will incorporate the WebAudio [AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext)
+and [AudioNode](https://developer.mozilla.org/en-US/docs/Web/API/AudioNode).
+
+You can find the codebase up to this point on the [audio-node](https://github.com/mikezaby/web_audio_engine/tree/audio-node) branch,
+or you can view the additions compared with the previous post [here](https://github.com/mikezaby/web_audio_engine/compare/basic-module...audio-node).
+
+## AudioContext
+
+`AudioContext` is the backbone of the WebAudio API. To do anything with WebAudio, you must first create an AudioContext.
+It manages almost everything in WebAudio:
+
+- **Set the Sample Rate and Latency**: Optimize audio processing to balance between quality (higher sample rates) and responsiveness (lower latency), crucial for real-time applications.
+- **Create AudioNodes**: Generate various sources, and processing modules.
+- **Manage Connections Between AudioNodes**: Construct sophisticated audio processing graphs by connecting nodes in chains or more complex structures for versatile audio manipulation.
+- **Control Audio Playback**: Manage when audio plays, stops, and how it's synchronized with other media or user interactions.
+- **Get the Destination Node**: Connect nodes to the context's destination, typically the speakers or audio output device, to produce sound.
+
+### Integrate
+
+To begin, we will install [standardized-audio-context](https://github.com/chrisguttandin/standardized-audio-context)
+as we want to have a reliable and consistent way of work in all supported browsers.
+
+```
+pnpm install standardized-audio-context
+```
+
+Now, we will create `core/Context` that is responsible for creating or getting the current context.
+We have two kinds of context, the `AudioContext` and the `OfflineAudioContext`.
+The difference between that two, is that the first one is rendirng to the hardware output,
+and the offline is rendiring to an [AudioBuffer](https://developer.mozilla.org/en-US/docs/Web/API/AudioBuffer).
+So if we want to have a real time behavior we use the `AudioContext`, on the other hand if we want to generate a wav or mp3 we use the `OfflineAudioContext`.
+We will not use `OfflineAudioContext`, but we prepare our codebase for this.
+
+```ts
+// file: /src/core/Context.ts
+
+import {
+  AudioContext,
+  IAudioContext,
+  IOfflineAudioContext,
+  OfflineAudioContext,
+} from "standardized-audio-context";
+
+export type IAnyAudioContext = IAudioContext | IOfflineAudioContext;
+
+let globalContext: IAnyAudioContext;
+
+export function getContext(): IAnyAudioContext {
+  if (globalContext) return globalContext;
+
+  setNewAudioContext();
+
+  return globalContext;
+}
+
+export function setNewAudioContext() {
+  const context = new AudioContext();
+  setContext(context);
+}
+
+interface OfflineAudioContextProps {
+  length: number;
+  sampleRate: number;
+}
+
+export function setNewOfflineAudioContext(props: OfflineAudioContextProps) {
+  const context = new OfflineAudioContext(props);
+  setContext(context);
+}
+
+function setContext(context: IAnyAudioContext) {
+  globalContext = context;
+}
+```
+
+Update Engine and Module to assign a context on initialization.
+
+Add property:
+
+```ts
+context: IAnyAudioContext;
+```
+
+Initialize in constructor:
+
+```ts
+this.context = getContext();
+```
+
+## AudioNode
+
+As we have integrated **AudioContext**, which is a prerequisite for creating **AudioNodes**.
+
+In the WebAudio API, an AudioNode is a fundamental component used to construct an audio processing graph.
+AudioNodes are individual audio processing units that can generate, shape, manipulate, or analyze audio data.
+Each AudioNode can be connected to other AudioNodes, creating a network where audio signals flow from one node to another.
+
+There are several types of AudioNodes, each serving specific purposes:
+
+- **Source Nodes:** Generate audio signals, e.g., `OscillatorNode` for tones or `AudioBufferSourceNode` for playing audio samples.
+- **Processing Nodes:** Modify audio signals, e.g., `GainNode` for volume control, `BiquadFilterNode` for tone shaping.
+- **Destination Nodes:** The final node in the audio graph is `AudioDestinationNode` that outputs the audio to the system's audio output device.
+
+### Integrate
+
+We want the actual modules to pass the corresponding AudioNode to the abstract Module class.
+However, since we need the AudioContext to create an AudioNode, and we don't have access to `this.context` before calling `super()`, we pass a callback to super that obtains the context and returns the AudioNode instance.
+
+We define an interface for our Module constructor.
+
+```ts
+// file: /src/core/Module.ts
+interface IModuleConstructor<T extends ModuleType>
+  extends Optional<IModule<T>, "id"> {
+  audioNode: (context: IAnyAudioContext) => IAudioNode<IAnyAudioContext>;
+}
+```
+
+```ts
+constructor(params: IModuleConstructor<T>) {
+```
+
+In the constructor we assign AudioNode
+
+```ts
+this.audioNode = audioNode(this.context);
+```
+
+In the Oscillator module, we define the AudioNode callback and pass it to super.
+
+```ts
+// file: /src/modules/Oscillator.ts
+import { OscillatorNode } from "standardized-audio-context";
+import { IChildParams, ModuleType } from ".";
+import { IAnyAudioContext } from "../core";
+import Module, { IModule } from "../core/Module";
+
+export interface IOscillator extends IModule<ModuleType.Oscillator> {}
+
+export interface IOscillatorProps {
+  wave: OscillatorType;
+  frequency: number;
+}
+
+const DEFAULT_PROPS: IOscillatorProps = { wave: "sine", frequency: 440 };
+
+export default class Oscillator extends Module<ModuleType.Oscillator> {
+  declare audioNode: OscillatorNode<IAnyAudioContext>;
+
+  constructor(params: IChildParams<ModuleType.Oscillator>) {
+    const props = { ...DEFAULT_PROPS, ...params.props };
+    const audioNode = (context: IAnyAudioContext) =>
+      new OscillatorNode(context);
+
+    super({ ...params, props, audioNode, moduleType: ModuleType.Oscillator });
+  }
+}
+```
+
+## AudioParam
+
+An [AudioParam](https://developer.mozilla.org/en-US/docs/Web/API/AudioParam) is an interface representing an audio-related parameter, typically a volume, frequency, or similar property.
+AudioParams are used to automate and control changes to AudioNode parameters over time.
+
+For example, an OscillatorNode has a frequency AudioParam that can be set or modulated to change the pitch of the tone it generates.
+This modulation can be done statically or over a period, allowing for sophisticated audio effects like sweeps and transitions.
+
+### Integrate
+
+We need a mechanism that triggers a function when props are updated, enabling us to integrate with the **AudioNode** or more specifically, with the **AudioParam**.
+
+For this reason, we will use `Object.assign` to trigger the setter of those props:
+
+```ts
+// file: /src/core/Module.ts
+set props(value: Partial<ModuleTypeToPropsMapping[T]>) {
+  this._props = { ...this._props, ...value };
+  Object.assign(this, value);
+}
+```
+
+And this is how we interact with **AudioNode** and **AudioParam** in Oscillator
+
+```ts
+// file: /src/modules/Oscillator.ts
+set wave(value: IOscillatorProps["wave"]) {
+  this.audioNode.type = value;
+}
+
+set frequency(value: IOscillatorProps["frequency"]) {
+  this.audioNode.frequency.value = value;
+}
+```
+
+We apply similar changes to the [Volume](https://github.com/mikezaby/web_audio_engine/blob/audio-node/src/modules/Volume.ts) module.
+
+## Connect modules
+
+From [MDN](https://developer.mozilla.org/en-US/docs/Web/API/AudioNode/connect)
+
+> The `connect()` method of the AudioNode interface lets you connect one of the node's outputs to a target, which may be either another **AudioNode** (thereby directing the sound data to the specified node) or an **AudioParam**, so that the node's output data is automatically used to change the value of that parameter over time.
+
+We'll provide a temporary solution about how to connect modules, as we plan to implement a more advanced version in the next post.
+
+We implement a connect function in the Module class, which takes another Module as an argument and then connects the AudioNodes of both.
+
+```ts
+// file: /src/core/Module.ts
+connect(module: AnyModule) {
+  this.audioNode.connect(module.audioNode);
+}
+```
+
+Then we expose this method to **Engine**
+
+```ts
+// file: /src/Engine.ts
+connect(outputModuleId: string, inputModuleId: string) {
+  const output = this.findModule(outputModuleId);
+  const input = this.findModule(inputModuleId);
+
+  output.connect(input);
+}
+```
+
+## Startable
+
+There are **AudioNodes** that generate signals and have the ability to **start** and **stop**, such as the `OscillatorNode`.
+We need to provide the ability to start and stop at the module level.
+
+We implement an interface that describes the **start** and **stop** functions, and then each module is responsible for defining how to handle this.
+
+```ts
+// file: /src/core/Module.ts
+export interface Startable {
+  start(time: number): void;
+  stop(time: number): void;
+}
+```
+
+The `Oscillator` implements this inteface:
+
+```ts
+class Oscillator
+  extends Module<ModuleType.Oscillator>
+  implements IOscillatorProps, Startable {
+```
+
+And defines how this functions work:
+
+```ts
+start(time: number) {
+  this.audioNode.start(time);
+}
+
+stop(time: number) {
+  this.audioNode.stop(time);
+
+  this.audioNode = new OscillatorNode(this.context, {
+    type: this.props["wave"],
+    frequency: this.props["frequency"],
+  });
+}
+```
+
+Since an `OscillatorNode` can start only once, the only way to provide this functionality is to assign a new OscillatorNode to the audioNode property after the module stops.
+
+We also need to expose **start** and **stop** functionality to the Engine:
+
+```ts
+// file: /src/Engine.ts
+async start(time?: number) {
+  await this.resume();
+
+  time ??= this.context.currentTime;
+  this.isStarted = true;
+
+  Object.values(this.modules).forEach((m) => {
+    const module = m as unknown as Startable;
+    if (!module.start) return;
+
+    module.start(time);
+  });
+}
+
+stop(time?: number) {
+  time ??= this.context.currentTime;
+  this.isStarted = false;
+
+  Object.values(this.modules).forEach((m) => {
+    const module = m as unknown as Startable;
+    if (!module.stop) return;
+
+    module.stop(time);
+  });
+}
+
+async resume() {
+  if (this.context instanceof OfflineAudioContext) return;
+
+  return await this.context.resume();
+}
+```
+
+We also need to `resume` the `AudioContext`, as the browser starts the context in a `suspended` state.
+
+## Master
+
+We have already implemented the Oscillator and Volume modules, but to drive our signal to the computer's output, we need at least one more module.
+For this purpose, we will implement the [Master module](https://github.com/mikezaby/web_audio_engine/blob/audio-node/src/modules/Master.ts).
+This module utilizes the AudioDestinationNode as its AudioNode, which serves as the final destination for all audio signals in our audio processing graph.
+This is where audio gets routed to the hardware, such as speakers or headphones, enabling us to hear the sound.
+
+## Time for action
+
+Let's assume that we have the data for an Oscillator, Volume, and Master assigned to the variables osc, vol, and master, respectively.
+We want to create a routing path like this:
+
+```
+osc -> vol -> master
+```
+
+```ts
+Engine.connect(osc.id, vol.id);
+Engine.connect(vol.id, master.id);
+```
+
+We create a function to toggle (start/stop) the **Engine**:
+
+```ts
+async function toggle() => {
+  if (Engine.isStarted) {
+    Engine.stop();
+    // This is temporary, we will implement a automate solution for this
+    Engine.connect(osc.id, vol.id);
+  } else {
+    await Engine.start();
+  }
+};
+```
+
+To make things more interesting, we define an interval that updates the oscillator's frequency over time:
+
+```ts
+setInterval(() => {
+  Engine.updateModule({
+    id: osc.id,
+    moduleType: osc.moduleType,
+    changes: { props: { frequency: 2000 * Math.random() } },
+  });
+}, 1000);
+```
+
+Let's hear the result:
+
+<Example />
+
+The complete example of this implementation is available [here](https://github.com/mikezaby/web_audio_engine/blob/audio-node/src/main.ts)
+
+## What's Next
+
+In the next post, we will implement more advanced I/O handling, which will provide information about the available inputs, outputs, and current routing configurations.
