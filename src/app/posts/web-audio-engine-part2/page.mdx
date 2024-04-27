@@ -22,7 +22,7 @@ The first feature we will tackle is module management, which includes the abilit
 
 ## But what is a module
 
-We can think of modules like small functions that have the capability to be chained together.
+We can think of modules as small functions that have the capability to be chained together.
 For example, consider a string generator function where we perform some string manipulation afterward:
 
 ```js
@@ -53,18 +53,18 @@ Let's preview some modules that we will implement in our Engine:
 Audio:
 
 - Generator, generates audio signal
-  - Oscillator, it generates sound of sine, triangle, square waves in a desired frequency
+  - Oscillator, generates the sound of sine, triangle, and square waves in a desired frequency
 - Processing
-  - Volume, it adjust the loudness of the input signal
+  - Volume, it adjusts the loudness of the input signal
   - Filter, it applies frequency filtering to the input signal
 
 Midi:
 
-- Sequencer, it generates midi events over time
+- Sequencer, generates midi events over time
 
 ## Preparing for development
 
-At the beginning, we want to shape our project and figure out how to create, update, or remove a module.
+In the beginning, we want to shape our project and figure out how to create, update, or remove a module.
 While we're not going to work with audio at this step, it is a very important one because we will structure the foundation of this library, see how data flows through the modules, and prepare our code for the next steps.
 
 ## File Structure
@@ -85,9 +85,9 @@ This is what our file structure will look like at the end of this post:
     - Master.ts
 ```
 
-Lets explain this files and folders.
+Lets explain these files and folders.
 
-`Engine.ts` exposes all the functionality that are available for the engine users.
+`Engine.ts` exposes all the functionality that is available for the engine users.
 
 The `core` folder is where we place various functionalities that our modules will use.
 Under the `core` folder, there is a file named `Module.ts`.
@@ -103,9 +103,9 @@ This includes the following fields:
 - id, uuidv4
 - name, to help us organize our modules
 - moduleType, the module type (Oscillator, Volume, etc.)
-- props, each module type, has it own props, for example the Oscillator has frequency and wave, and the Volume has volume.
+- props, each module type, has its own props, for example the Oscillator has frequency and wave, and the Volume has volume.
 
-Here is how looks like:
+Here is what it looks like:
 
 ```ts
 {
@@ -152,7 +152,7 @@ Engine.removeModule(1);
 
 ## The Base Module class
 
-Having discussed the engine's concept, file and data structures, and how users can manage modules, it's time to dive deeper into the code and examine our implementation of the abstract Module class.
+Having discussed the engine's concept, file, and data structures, and how users can manage modules, it's time to dive deeper into the code and examine our implementation of the abstract Module class.
 
 Previously, we outlined a data structure capable of serving every module we build, with the flexibility of the props attribute.
 However, our goal is to have a polymorphic data structure that is also type-safe.
@@ -176,7 +176,7 @@ interface IModule<T extends ModuleType> {
 }
 ```
 
-As shown above, we start by defining the ModuleType enum, then map the type to actual module props.
+As shown above, we start by defining the ModuleType enum, and then map the type to actual module props.
 This approach achieves a polymorphic data structure through the use of a ModuleType generic.
 
 To fully understand this concept, let's examine the data structures for Oscillator and Volume:
@@ -198,7 +198,7 @@ interface IVolumeProps {
 interface IVolume extends IModule<ModuleType.Volume> {}
 ```
 
-Next, we will start implementating the abstract Module class.
+Next, we will start implementing the abstract Module class.
 To support our data-driven approach, we need to implement two functions, props and serialize:
 
 - props: We define getter and setter functions. The getter returns the module's `props`, and the setter accepts a Partial of props, allowing updates to all or specific props.
@@ -433,4 +433,4 @@ You can find the branch related to this post here: [Web Audio Engine](https://gi
 
 ## What's Next
 
-In the [next post](/posts/web-audio-engine-part3) we will start intergrating WebAudio starting from AudioNode, and we will explore how we could connect modules between them.
+In the [next post](/posts/web-audio-engine-part3) we will start integrating WebAudio starting from AudioNode, and we will explore how we could connect modules between them.
