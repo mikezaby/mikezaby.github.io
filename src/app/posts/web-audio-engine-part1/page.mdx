@@ -4,7 +4,7 @@ import CoverImg from "./cover.png";
 export const metadata = {
   title: "Web Audio Engine Part 1 - Story & Engine Explanation",
   description:
-    "This is the story about how I started be involved with audio programming, and the first part of a series of posts about how to implement an data-driven audio engine with web audio",
+    "This is the story about how I started to be involved with audio programming, and the first part of a series of posts about how to implement a data-driven audio engine with web audio",
   date: "Mar 28, 2024",
   cover: CoverImg,
 };
@@ -20,7 +20,7 @@ Welcome to the first post in a series about my journey into audio programming an
 When I started programming, I always enjoyed having both small and large personal projects that brought me pleasure and knowledge.
 After working professionally for several years, this need began to fade, and I started seeking new hobbies.
 In my younger days, I played drums and was in a few bands until I finished high school.
-Then, I went to university for computer science, sold my drum kit, bought my first computer, and my interests shifted entirely towards computers.
+Then, I went to university for computer science, sold my drum kit, bought my first computer, and my interests shifted entirely toward computers.
 
 In the first few years, my hobbies were limited to playing games and learning about computer hardware, but gradually, I began programming.
 Eventually, programming became my sole interest. I started working professionally as a developer at 25, and by my thirties, programming was almost my only interest.
@@ -40,7 +40,7 @@ This process reignited my passion for projects, more specifically for audio appl
 ## Prerequisites
 
 This post assumes familiarity with the Web Audio API and TypeScript, as it's not an introduction to these technologies.
-However, you'll gain insights into their basics or little more advanced technics through our discussion.
+However, you'll gain insights into their basics or a little more advanced techniques through our discussion.
 Should you find yourself needing more background information at any point, I encourage you to consult the official documentation
 of [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 and [TypeScript](https://www.typescriptlang.org/docs/).
@@ -55,14 +55,14 @@ I decided to make an audio engine without a UI first.
 This way, I could build my ideas on top of it later.
 I thought about making a modular data-driven engine, so I could easily manage it with something like Redux for state management.
 A data-driven approach would let me hide the complex parts under the hood and play with the core library.
-I could also re-write it to different languages, that is something that I want to experiment in the future.
+I could also re-write it in different languages, that is something that I want to experiment with in the future.
 
 I wanted a very simple API that would let me control the engine well.
 I had other applications in mind, like [Pure Data](https://puredata.info/) and [VCV Rack](https://vcvrack.com/).
 I don't want to compete with these robust products or build a feature-complete product, but having them in mind helps as a guide to my learning process and the initial product.
 
 While I want to have an engine separated from the UI, it helps me to think of a UI implementation of the engine's capabilities.
-So this is how it looks like:
+So this is what it looks like:
 
 <Image src={SimplePatchImg} />
 
@@ -74,7 +74,7 @@ Let's explain a little about the elements we have in this image:
 - A start/stop button on the top.
 
 This is a very simple patch designed to illustrate the functionality.
-To achieve building a UI over the engine like the previous image, we would need an engine API like this:
+To build a UI over the engine like the previous image, we would need an engine API like this:
 
 - add module
 - update module
