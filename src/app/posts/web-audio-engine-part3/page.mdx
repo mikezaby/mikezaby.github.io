@@ -3,7 +3,7 @@ import Example from "./Example";
 
 export const metadata = {
   title: "Web Audio Engine Part 3 - Integrating WebAudio API",
-  description: "It's time to start intergrating WebAudio API to our project!",
+  description: "It's time to start integrating WebAudio API into our project!",
   date: "Apr 17, 2024",
   cover: CoverImg,
 };
@@ -23,7 +23,7 @@ or you can view the additions compared with the previous post [here](https://git
 It manages almost everything in WebAudio:
 
 - **Set the Sample Rate and Latency**: Optimize audio processing to balance between quality (higher sample rates) and responsiveness (lower latency), crucial for real-time applications.
-- **Create AudioNodes**: Generate various sources, and processing modules.
+- **Create AudioNodes**: Generate various sources and processing modules.
 - **Manage Connections Between AudioNodes**: Construct sophisticated audio processing graphs by connecting nodes in chains or more complex structures for versatile audio manipulation.
 - **Control Audio Playback**: Manage when audio plays, stops, and how it's synchronized with other media or user interactions.
 - **Get the Destination Node**: Connect nodes to the context's destination, typically the speakers or audio output device, to produce sound.
@@ -31,7 +31,7 @@ It manages almost everything in WebAudio:
 ### Integrate
 
 To begin, we will install [standardized-audio-context](https://github.com/chrisguttandin/standardized-audio-context)
-as we want to have a reliable and consistent way of work in all supported browsers.
+as we want to have a reliable and consistent way of working in all supported browsers.
 
 ```
 pnpm install standardized-audio-context
@@ -39,9 +39,9 @@ pnpm install standardized-audio-context
 
 Now, we will create `core/Context` that is responsible for creating or getting the current context.
 We have two kinds of context, the `AudioContext` and the `OfflineAudioContext`.
-The difference between that two, is that the first one is rendirng to the hardware output,
-and the offline is rendiring to an [AudioBuffer](https://developer.mozilla.org/en-US/docs/Web/API/AudioBuffer).
-So if we want to have a real time behavior we use the `AudioContext`, on the other hand if we want to generate a wav or mp3 we use the `OfflineAudioContext`.
+The difference between the two is that the first one is rendering to the hardware output,
+and the offline is rendering to an [AudioBuffer](https://developer.mozilla.org/en-US/docs/Web/API/AudioBuffer).
+So if we want to have a real-time behavior we use the `AudioContext`, on the other hand, if we want to generate a WAV or mp3 we use the `OfflineAudioContext`.
 We will not use `OfflineAudioContext`, but we prepare our codebase for this.
 
 ```ts
@@ -112,7 +112,7 @@ There are several types of AudioNodes, each serving specific purposes:
 
 - **Source Nodes:** Generate audio signals, e.g., `OscillatorNode` for tones or `AudioBufferSourceNode` for playing audio samples.
 - **Processing Nodes:** Modify audio signals, e.g., `GainNode` for volume control, `BiquadFilterNode` for tone shaping.
-- **Destination Nodes:** The final node in the audio graph is `AudioDestinationNode` that outputs the audio to the system's audio output device.
+- **Destination Nodes:** The final node in the audio graph is `AudioDestinationNode` which outputs the audio to the system's audio output device.
 
 ### Integrate
 
@@ -251,7 +251,7 @@ export interface Startable {
 }
 ```
 
-The `Oscillator` implements this inteface:
+The `Oscillator` implements this interface:
 
 ```ts
 class Oscillator
@@ -259,7 +259,7 @@ class Oscillator
   implements IOscillatorProps, Startable {
 ```
 
-And defines how this functions work:
+And defines how these functions work:
 
 ```ts
 start(time: number) {
@@ -344,7 +344,7 @@ We create a function to toggle (start/stop) the **Engine**:
 async function toggle() => {
   if (Engine.isStarted) {
     Engine.stop();
-    // This is temporary, we will implement a automate solution for this
+    // This is temporary, we will implement an automated solution for this
     Engine.connect(osc.id, vol.id);
   } else {
     await Engine.start();
