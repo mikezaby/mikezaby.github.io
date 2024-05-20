@@ -144,7 +144,7 @@ In the Oscillator module, we define the AudioNode callback and pass it to super.
 ```ts
 // file: /src/modules/Oscillator.ts
 import { OscillatorNode } from "standardized-audio-context";
-import { IChildParams, ModuleType } from ".";
+import { ICreateParams, ModuleType } from ".";
 import { IAnyAudioContext } from "../core";
 import Module, { IModule } from "../core/Module";
 
@@ -160,12 +160,12 @@ const DEFAULT_PROPS: IOscillatorProps = { wave: "sine", frequency: 440 };
 export default class Oscillator extends Module<ModuleType.Oscillator> {
   declare audioNode: OscillatorNode<IAnyAudioContext>;
 
-  constructor(params: IChildParams<ModuleType.Oscillator>) {
+  constructor(params: ICreateParams<ModuleType.Oscillator>) {
     const props = { ...DEFAULT_PROPS, ...params.props };
     const audioNode = (context: IAnyAudioContext) =>
       new OscillatorNode(context);
 
-    super({ ...params, props, audioNode, moduleType: ModuleType.Oscillator });
+    super({ ...params, props, audioNode });
   }
 }
 ```
