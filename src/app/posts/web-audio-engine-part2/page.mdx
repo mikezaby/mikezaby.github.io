@@ -261,9 +261,9 @@ Given the data structures we defined earlier, their implementation at this stage
 const DEFAULT_PROPS: IOscillatorProps = { wave: "sine", frequency: 440 };
 
 class Oscillator extends Module<ModuleType.Oscillator> {
-  constructor(params: IChildParams<ModuleType.Oscillator>) {
+  constructor(params: ICreateModule<ModuleType.Oscillator>) {
     const props = { ...DEFAULT_PROPS, ...params.props };
-    super({ ...params, props, moduleType: ModuleType.Oscillator });
+    super({ ...params, props });
   }
 }
 ```
@@ -272,19 +272,20 @@ class Oscillator extends Module<ModuleType.Oscillator> {
 const DEFAULT_PROPS: IVolumeProps = { volume: 100 };
 
 class Volume extends Module<ModuleType.Volume> {
-  constructor(params: IChildParams<ModuleType.Volume>) {
+  constructor(params: ICreateModule<ModuleType.Volume>) {
     const props = { ...DEFAULT_PROPS, ...params.props };
-    super({ ...params, props, moduleType: ModuleType.Volume });
+    super({ ...params, props });
   }
 }
 ```
 
-The `IChildParams` interface serves as a helper so that we don’t need to redefine similar interfaces for the constructor parameters of the modules repeatedly.
+The `ICreateParams` interface serves as a helper so that we don’t need to redefine similar interfaces for the constructor parameters of the modules repeatedly.
 
 ```ts
-interface IChildParams<T extends ModuleType> {
+interface ICreateParams<T extends ModuleType> {
   id?: string;
   name: string;
+  moduleType: T;
   props: Partial<ModuleTypeToPropsMapping[T]>;
 }
 ```
@@ -345,27 +346,32 @@ const osc = Engine.addModule<ModuleType.Oscillator>({
 });
 ```
 
-We use `createModule` and `ICreateParams` that be taken from `modules/index`
+We use `createModule` that be taken from `modules/index`
 This setup ensures params match with the module type.
 
 ```ts
-interface ICreateModule<T extends ModuleType> extends IChildParams<T> {
-  moduleType: T;
-}
-
-type ICreateParams =
-  | ICreateModule<ModuleType.Oscillator>
-  | ICreateModule<ModuleType.Volume>;
-
-function createModule(params: ICreateParams): AnyModule {
+function createModule<T extends ModuleType>(
+  params: ICreateParams<T>,
+): AnyModule {
   switch (params.moduleType) {
     case ModuleType.Oscillator:
-      return new Oscillator(params);
+      return new Oscillator(params as ICreateParams<ModuleType.Oscillator>);
     case ModuleType.Volume:
-      return new Volume(params);
+      return new Volume(params as ICreateParams<ModuleType.Volume>);
     default:
-      throw Error(`Unknown moduleType ${params.moduleType}`);
+      assertNever(params.moduleType);
   }
+}
+```
+
+We use assertNever at the end, to ensure that we don't forgot to handle any type.
+
+```ts
+// file: src/utils/index.ts
+export function assertNever(value: never, message?: string): never {
+  console.error("Unknown value", value);
+  message ??= "Not possible value";
+  throw Error(message);
 }
 ```
 
@@ -377,7 +383,7 @@ First, define the function parameters interface:
 interface IUpdateModule<T extends ModuleType> {
   id: string;
   moduleType: T;
-  changes: Partial<Omit<IChildParams<T>, "id">>;
+  changes: Partial<Omit<ICreateParams<T>, "id" | "moduleType">>;
 }
 ```
 
