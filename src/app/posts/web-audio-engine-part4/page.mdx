@@ -1,0 +1,804 @@
+import CoverImg from "./cover.jpeg";
+
+export const metadata = {
+  title: "Web Audio Engine Part 4 - Implementing Advanced I/O",
+  description:
+    "In this post, we explore how to implement an advanced I/O system for our web audio engine. We'll set up modular inputs and outputs, integrate them into the engine, and create a routing mechanism",
+  date: "Apr 31, 2024",
+  cover: CoverImg,
+};
+
+# Web Audio Engine Part 4 - implementing Advanced I/O
+
+In the [previous post](/posts/web-audio-engine-part3), we began integrating Web Audio and implemented a basic connect functionality, allowing us to link modules together.
+However, this basic functionality has limitations when it comes to building more complex audio systems. It lacks the flexibility and control needed for advanced audio processing tasks.
+
+To overcome these limitations, in this post, we will explore and implement a more advanced and modular I/O system.
+This new system will provide greater control over connections, enabling us to create more intricate and scalable audio setups.
+Additionally, this enhanced I/O system will offer users detailed information about the available I/Os of a module and the current connections between these I/Os.
+
+Before we continue I'm suggesting to do a fast diagonal reading if you have already read it before, or a more detailed reading if you haven't to
+[part1](/posts/web-audio-engine-part1),
+[part2](/posts/web-audio-engine-part2),
+[part3](/posts/web-audio-engine-part3).
+
+You can find the codebase up to this point on the [advanced-io](https://github.com/mikezaby/web_audio_engine/tree/advanced-io) branch,
+or you can view the additions compared with the previous post [here](https://github.com/mikezaby/web_audio_engine/compare/audio-node...advanced-io).
+
+## Data Structure
+
+We will start with the data structure.
+
+First, let's describe the data structure of an I/O:
+
+```ts
+{
+  id: string,
+  name: string,
+  ioType: IOType,
+  moduleId: string,
+}
+```
+
+The `IOType` will keep all the available I/O types that we will implement.
+In this post, we will implement `AudioInput` and `AudioOutput`, but in the next iteration, we will add support for `MidiInput` and `MidiOutput`.
+
+```ts
+// file: /src/core/IO/Base.ts
+enum IOType {
+  AudioInput = "audioInput",
+  AudioOutput = "audioOutput",
+}
+```
+
+Next, we want to define the data structure that describes the connection between an input and an output.
+We name this connection a `Route`.
+
+```ts
+{
+  id: string,
+  source: { ioName: string, moduleId: string },
+  destination: { ioName: string, moduleId: string }
+}
+```
+
+We decided to use `ioName` and `moduleId` as the information for the source and destination instead of just the I/O id.
+This decision allows us to quickly determine which module an I/O belongs to, and using ioName instead of an id makes it more human-friendly.
+We also enforce unique name validation to avoid problems with duplicate names.
+
+So this information is enough to know which I/Os are available and the connections between them.
+
+## File Structure
+
+In this post, we will implement the `Base` class for our I/O, the `AudioIO`, which will handle the connections between `AudioNode` outputs and `AudioNode` inputs or `AudioParams`.
+Additionally, we will implement a collection that will help us define easily the desired inputs and outputs for each module.
+
+```
+- src
+  - core
+    - IO
+      - index.ts
+      - Base.ts
+      - AudioIO.ts
+      - Collection.ts
+```
+
+## The Base IO Class
+
+We want to define the interface for the I/O based on the data that we showed before.
+To initialize an I/O, we need to know the name of the I/O and its type.
+
+```ts
+// file: /src/core/IO/Base.ts
+interface IOProps {
+  name: string;
+  ioType: IOType;
+}
+```
+
+For serialization, we need to extend the previous interface with the information of I/O id and moduleId.
+
+```ts
+// file: /src/core/IO/Base.ts
+interface IIOSerialize extends IOProps {
+  id: string;
+  moduleId: string;
+}
+```
+
+### Constructor
+
+To define an I/O, we also need to know which module it belongs to, for this reason, we pass this argument in the constructor.
+We use a deterministic id generation based on module id and I/O name.
+We do this because we want unique ids, but we also want the ability to reproduce the same id when we have the same module id and I/O name.
+Lastly, we want to keep track of the connections of this I/O.
+
+```ts
+// file: /src/core/IO/Base.ts
+abstract class Base implements IOProps {
+  id: string;
+  ioType: IOType;
+  name: string;
+  module: AnyModule;
+  connections: Base[];
+
+  constructor(module: AnyModule, props: IOProps) {
+    this.module = module;
+    this.name = props.name;
+    this.ioType = props.ioType;
+    this.id = deterministicId(this.module.id, this.name);
+    this.connections = [];
+  }
+}
+```
+
+### Plug/UnPlug
+
+We want a standardized procedure for any I/O type that can be plugged or unplugged, and these functions can be overridden with extra logic based on specific I/O type needs.
+The only thing that we want from basic plug/unplug functionality is to update the connections.
+Also, because we want both input and output informed about the connection, we have a flag to know if we need to call the plug/unPlug function in the opposite way.
+We also have an unPlugAll functionality to easily unplug all connections.
+
+```ts
+// file: /src/core/IO/Base.ts
+plug(io: Base, plugOther: boolean = true) {
+  this.connections.push(io);
+  if (plugOther) io.plug(this, false);
+}
+
+unPlug(io: Base, plugOther: boolean = true) {
+  this.connections = this.connections.filter(
+    (currentIO) => currentIO.id !== io.id,
+  );
+  if (plugOther) io.unPlug(this, false);
+}
+
+unPlugAll() {
+  this.connections.forEach((otherIO) => this.unPlug(otherIO));
+}
+```
+
+### Serialize
+
+We want to serialize the data of the I/O based on what we discussed in the **Data Structure** section.
+
+```ts
+// file: /src/core/IO/Base.ts
+serialize(): IIOSerialize {
+  return {
+    id: this.id,
+    name: this.name,
+    ioType: this.ioType,
+    moduleId: this.module.id,
+  };
+}
+```
+
+### Handling Connection As Geneneric
+
+In some cases may we don't want to change to plug/unPlug anything else than what is the `Connection`,
+so we make an aditional class that will extends `Base` with the ability to set a generic about the `Connection`.
+
+```ts
+// file: /src/core/IO/Base.ts
+abstract class IO<Connection extends Base> extends Base {
+  declare connections: Connection[];
+
+  constructor(module: AnyModule, props: IOProps) {
+    super(module, props);
+  }
+
+  plug(io: Connection, plugOther?: boolean): void {
+    super.plug(io, plugOther);
+  }
+
+  unPlug(io: Connection, plugOther?: boolean): void {
+    super.unPlug(io, plugOther);
+  }
+}
+```
+
+## AudioIO
+
+We want to adjust `IOProps` to set specific types for `AudioInputProps` and `AudioOutputProps`, and extend them with an extra field `getAudioNode`, which is a callback that returns an `AudioNode` for output, as only the AudioNode has the ability to call connect.
+For inputs, the callback returns an `AudioNode`, `AudioParam`, or `AudioDestinationNode` because all of this are able to be connected to an AudioNode.
+We use a callback instead of a simple property because the AudioNode may change.
+For example, with an Oscillator, we have to create a new OscillatorNode every time we stop it.
+
+```ts
+// file: /src/core/IO/AudioIO.ts
+export interface AudioInputProps extends IOProps {
+  ioType: IOType.AudioInput;
+  getAudioNode: () => AudioNode | AudioParam | AudioDestinationNode;
+}
+
+export interface AudioOutputProps extends IOProps {
+  ioType: IOType.AudioOutput;
+  getAudioNode: () => AudioNode;
+}
+```
+
+The implementation of `AudioInput` is straightforward:
+
+```ts
+// file: /src/core/IO/AudioIO.ts
+class AudioInput extends IO<AudioOutput> implements AudioInputProps {
+  declare ioType: IOType.AudioInput;
+  getAudioNode: AudioInputProps["getAudioNode"];
+
+  constructor(module: AnyModule, props: AudioInputProps) {
+    super(module, props);
+    this.getAudioNode = props.getAudioNode;
+  }
+}
+```
+
+In the `AudioOutput`, we will add the extra code that should be executed when we plug or unplug.
+
+```ts
+// file: /src/core/IO/AudioIO.ts
+export class AudioOutput extends IO<AudioInput> implements AudioOutputProps {
+  declare ioType: IOType.AudioOutput;
+  getAudioNode!: AudioOutputProps["getAudioNode"];
+
+  constructor(module: AnyModule, props: AudioOutputProps) {
+    super(module, props);
+    this.getAudioNode = props.getAudioNode;
+  }
+
+  plug(io: AudioInput, plugOther: boolean = true) {
+    super.plug(io, plugOther);
+    const input = io.getAudioNode();
+
+    if (input instanceof AudioParam) {
+      this.getAudioNode().connect(input);
+    } else {
+      this.getAudioNode().connect(input);
+    }
+  }
+
+  unPlug(io: AudioInput, plugOther: boolean = true) {
+    super.unPlug(io, plugOther);
+    const input = io.getAudioNode();
+
+    try {
+      if (input instanceof AudioParam) {
+        this.getAudioNode().disconnect(input);
+      } else {
+        this.getAudioNode().disconnect(input);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+```
+
+Unfortunately, we have an awkward handling to connect an `AudioNode` to an `AudioParam`.
+While the connect method allows connecting an `AudioNode` to an `AudioParam`, due to a TypeScript [issue](https://github.com/microsoft/TypeScript/issues/14107), we have to handle it like this.
+
+## Collection
+
+The last tool for I/O will be the `Collection`.
+We want the integration to be as easy as possible and ensure proper separation of concerns.
+Therefore, we need a class that will serve as a collection of Inputs or Outputs and handle tasks such as adding a new I/O, finding an existing one, and serializing the collection.
+
+As mentioned, we want two collection types: Input and Output.
+Currently, we have only one type of Node for each collection type.
+
+```ts
+// file: /src/core/IO/Collection.ts
+enum CollectionType {
+  Input = "Input",
+  Output = "Output",
+}
+```
+
+### Constructor
+
+We need a class that will take a generic type representing the `CollectionType`.
+We will use this generic type later to match properties appropriately based on the collection type.
+
+```ts
+// file: /src/core/IO/Collection.ts
+abstract class IOCollection<T extends CollectionType> {
+  module: AnyModule;
+  collection: Base[] = [];
+  collectionType: T;
+
+  constructor(collectionType: T, module: AnyModule) {
+    this.collectionType = collectionType;
+    this.module = module;
+  }
+}
+```
+
+### Add I/O
+
+We want to create an interface that will map the appropriate properties based on the collection type.
+This allows us to avoid incorrect usage at an early stage through type checking.
+Finally, we need to validate the uniqueness of the I/O name in this collection.
+
+```ts
+// file: /src/core/IO/Collection.ts
+interface IMappedIOProps {
+  [CollectionType.Input]: AudioInputProps;
+  [CollectionType.Output]: AudioOutputProps;
+}
+```
+
+```ts
+// file: /src/core/IO/Collection.ts
+add(props: IMappedIOProps[T]) {
+  let io: Base;
+  this.validateUniqName(props.name);
+
+  switch (props.ioType) {
+    case IOType.AudioInput:
+      io = new AudioInput(this.module, props);
+      break;
+    case IOType.AudioOutput:
+      io = new AudioOutput(this.module, props);
+      break;
+    default:
+      assertNever(props);
+  }
+
+  this.collection.push(io);
+
+  return io;
+}
+```
+
+```ts
+// file: /src/core/IO/Collection.ts
+private validateUniqName(name: string) {
+  if (this.collection.some((io) => io.name === name)) {
+    throw Error(`An I/O with name ${name} already exists`);
+  }
+}
+```
+
+### Finders And Serializer
+
+These functions are straightforward:
+
+```ts
+// file: /src/core/IO/Collection.ts
+find(id: string) {
+  const io = this.collection.find((io) => io.id === id);
+  if (!io) throw Error(`The I/O with id ${id} does not exists`);
+
+  return io;
+}
+
+findByName(name: string) {
+  const io = this.collection.find((io) => io.name === name);
+  if (!io) throw Error(`The I/O with name ${name} does not exists`);
+
+  return io;
+}
+
+serialize() {
+  return this.collection.map((io) => io.serialize());
+}
+```
+
+### Input/OutputCollection
+
+To facilitate easier usage in the module, we expose `InputCollection` and `OutputCollection`:
+
+```ts
+// file: /src/core/IO/Collection.ts
+export class InputCollection extends IOCollection<CollectionType.Input> {
+  constructor(module: AnyModule) {
+    super(CollectionType.Input, module);
+  }
+}
+
+export class OutputCollection extends IOCollection<CollectionType.Output> {
+  constructor(module: AnyModule) {
+    super(CollectionType.Output, module);
+  }
+}
+```
+
+## Base Module Integration
+
+In the Base module constructor, we initialize Input/OutputCollection:
+
+```ts
+// file: /src/core/Module.ts
+// function: constructor
+this.inputs = new InputCollection(this);
+this.outputs = new OutputCollection(this);
+```
+
+Then we want to provide an easy way to define audio inputs/outputs:
+
+```ts
+// file: /src/core/Module.ts
+protected registerAudioInput(props: Omit<AudioInputProps, "ioType">) {
+  this.inputs.add({ ...props, ioType: IOType.AudioInput });
+}
+
+protected registerAudioOutput(props: Omit<AudioOutputProps, "ioType">) {
+  this.outputs.add({ ...props, ioType: IOType.AudioOutput });
+}
+```
+
+We will see the usage of this as we also want to give the ability to define some common I/Os.
+The most common case is to define the module's main input and output `AudioNode`.
+
+```ts
+// file: /src/core/Module.ts
+protected registerDefaultIOs(value: "both" | "in" | "out" = "both") {
+  if (value === "in" || value === "both") {
+    this.registerAudioInput({
+      name: "in",
+      getAudioNode: () => this.audioNode,
+    });
+  }
+
+  if (value === "out" || value === "both") {
+    this.registerAudioOutput({
+      name: "out",
+      getAudioNode: () => this.audioNode,
+    });
+  }
+}
+```
+
+We also want to add information about the available I/Os to the serialize function:
+
+```ts
+// file: /src/core/Module.ts
+interface IModuleSerialize<T extends ModuleType> extends IModule<T> {
+  inputs: IIOSerialize[];
+  outputs: IIOSerialize[];
+}
+```
+
+```ts
+// file: /src/core/Module.ts
+serialize(): IModuleSerialize<T> {
+  return {
+    id: this.id,
+    name: this.name,
+    moduleType: this.moduleType,
+    props: this.props,
+    inputs: this.inputs.serialize(),
+    outputs: this.outputs.serialize(),
+  };
+}
+```
+
+## Define I/Os To Available Modules
+
+Now we are ready to define the I/Os for the actual modules.
+
+### Volume
+
+The volume module has both an input and an output, as we connect a signal to its input and take the adjusted signal from its output.
+So, we will define both input and output.
+
+```ts
+// file: /src/modules/Volume.ts
+// function: constructor
+this.registerDefaultIOs();
+```
+
+### Master
+
+The master module has only an input, which allows any module to reach our audio interface.
+
+```ts
+// file: /src/modules/Master.ts
+// function: constructor
+this.registerDefaultIOs("in");
+```
+
+### Oscillator
+
+Conversely, the oscillator has only an output, as the oscillator generates the signal.
+
+```ts
+// file: /src/modules/Oscillator.ts
+// function: constructor
+
+this.initializeGainDetune();
+this.registerDefaultIOs("out");
+this.registerInputs();
+```
+
+However, we will define an input for the `detune` `AudioParam`.
+With this setup, we allow the ability to automatically mutate the frequency.
+For example, we can connect another oscillator to detune.
+
+The `OscillatorNode.detune` parameter changes the original frequency by one semitone for every 100 cents.
+We want to apply values from -1 to 1 to change the original frequency by one semitone.
+Therefore, we create an extra `GainNode` with a value of 100, connect it to `audioNode.detune`, and then expose the `detuneGain` instead of `audioNode.detune`.
+
+```ts
+// file: /src/modules/Oscillator.ts
+private initializeGainDetune() {
+  this.detuneGain = new GainNode(this.context, { gain: 100 });
+  this.detuneGain.connect(this.audioNode.detune);
+}
+
+private registerInputs() {
+  this.registerAudioInput({
+    name: "detune",
+    getAudioNode: () => this.detuneGain,
+  });
+}
+```
+
+## Implement rePlug functionality
+
+Unfortunately, we haven't finished yet with the oscillator.
+As we discussed in the previous post, every time we stop the oscillator, we have to generate a new `OscillatorNode` to start it again.
+This means we need to build a replug mechanism that will allow us to replug all the connected I/Os.
+
+### Oscillator
+
+I'll start by explaining how I'd like to use the replug mechanism.
+We want a function that will accept a callback, so internally we will unplug all I/Os, run the desired code, and then replug the I/Os.
+
+```ts
+// file: /src/modules/Oscillator.ts
+stop(time: number) {
+  this.audioNode.stop(time);
+  this.rePlugAll(() => {
+    this.audioNode = new OscillatorNode(this.context, {
+      type: this.props["wave"],
+      frequency: this.props["frequency"],
+    });
+  });
+
+  this.isStated = false;
+}
+```
+
+### Base Module
+
+The implementation of the rePlugAll mechanism in the base module is simple, as we just delegate the functionality to the input/output collection.
+
+```ts
+// file: /src/core/Module.ts
+protected rePlugAll(callback?: () => void) {
+  this.inputs.rePlugAll(callback);
+  this.outputs.rePlugAll(callback);
+}
+```
+
+### Collection
+
+The collection again delegates the functionality to each I/O.
+
+```ts
+// file: /src/core/IO/Collection.ts
+rePlugAll(callback?: () => void) {
+  this.collection.forEach((io) => io.rePlugAll(callback));
+}
+```
+
+### Base I/O
+
+Finally, we will implement the actual replug functionality in the Base I/O.
+We keep the connected I/Os in a variable, so we can unplug them, call the callback, and then replug all the connections.
+
+```ts
+// file: /src/core/IO/Base.ts
+rePlugAll(callback?: () => void) {
+  const connections = this.connections;
+  this.unPlugAll();
+  if (callback) callback();
+
+  connections.forEach((otherIO) => this.plug(otherIO));
+}
+
+unPlugAll() {
+  this.connections.forEach((otherIO) => this.unPlug(otherIO));
+}
+```
+
+## Routes
+
+We have integrated our I/O system into the modules, so it's time to expose it to the engine.
+We will create a `Routes` class responsible for keeping route information and providing the API that will be exposed to the engine, allowing us to add and remove routes.
+
+### Implementation
+
+We discussed in the beginning how a route data looks.
+
+```ts
+{
+  id: string,
+  source: { ioName: string, moduleId: string },
+  destination: { ioName: string, moduleId: string }
+}
+```
+
+This will be translated to a TypeScript interface like this:
+
+```ts
+// file: /src/core/Routes.ts
+interface IPlug {
+  moduleId: string;
+  ioName: string;
+}
+
+interface IRoute {
+  id: string;
+  source: IPlug;
+  destination: IPlug;
+}
+```
+
+I'll provide the whole code at once as it is relatively simple.
+In the constructor of the class, we pass the engine so we can find the desired modules from it and, more specifically, the desired I/O of a module.
+We keep the information of the routes in an object where the key is the id of the route and the value is the `IRoute`.
+The only available public functions will be `addRoute` and `removeRoute`.
+
+```ts
+// file: /src/core/Routes.ts
+export class Routes {
+  engine: Engine;
+  routes: { [key: string]: IRoute };
+
+  constructor(engine: Engine) {
+    this.engine = engine;
+    this.routes = {};
+  }
+
+  addRoute(props: Optional<IRoute, "id">) {
+    const id = props.id || uuidv4();
+    this.routes[id] = { ...props, id };
+
+    this.plug(id);
+  }
+
+  removeRoute(id: string) {
+    this.unPlug(id);
+    delete this.routes[id];
+  }
+
+  private plug(id: string) {
+    const { sourceIO, destinationIO } = this.getIOs(id);
+    sourceIO.plug(destinationIO);
+  }
+
+  private unPlug(id: string) {
+    const { sourceIO, destinationIO } = this.getIOs(id);
+    sourceIO.unPlug(destinationIO);
+  }
+
+  private find(id: string): IRoute {
+    if (!this.routes[id]) throw Error(`Route with id ${id} not found`);
+
+    return this.routes[id];
+  }
+
+  private getIOs(id: string) {
+    const route = this.find(id);
+    const { source, destination } = route;
+
+    const sourceIO = this.engine.findIO(
+      source.moduleId,
+      source.ioName,
+      "output",
+    );
+    const destinationIO = this.engine.findIO(
+      destination.moduleId,
+      destination.ioName,
+      "input",
+    );
+
+    return { sourceIO, destinationIO };
+  }
+}
+```
+
+We also have to implement the `findIO` function as it doesn't exist yet.
+
+```ts
+// file: /src/Engine.ts
+findIO(moduleId: string, ioName: string, type: "input" | "output") {
+  const module = this.findModule(moduleId);
+  return module[`${type}s`].findByName(ioName);
+}
+```
+
+### Expose to Engine
+
+Finally, we need to integrate `Routes` into the engine and expose `addRoute` and `removeRoute`.
+
+We start by defining the routes property in the engine:
+
+```ts
+// file: /src/Engine.ts
+routes: Routes;
+```
+
+Initialize it in the constructor:
+
+```ts
+// file: /src/Engine.ts
+// function: constructor
+this.routes = new Routes(this);
+```
+
+And then expose the `addRoute` and `removeRoute` methods:
+
+```ts
+// file: /src/Engine.ts
+addRoute(props: Optional<IRoute, "id">) {
+  this.routes.addRoute(props);
+}
+
+remoteRoute(id: string) {
+  this.routes.removeRoute(id);
+}
+```
+
+## Lets Have Some Fun!
+
+I'll write a very simple example of code that creates a routing from an oscillator -> volume -> master.
+Additionally, I'll create an LFO, which is actually an oscillator, that will be connected to oscillator detune.
+
+```ts
+import { Engine, ModuleType } from "blibliki";
+
+const context = new AudioContext();
+const engine = new Engine(context);
+
+const osc = engine.addModule({
+  name: "osc",
+  moduleType: ModuleType.Oscillator,
+  props: { wave: "sine", frequency: 440 },
+});
+
+const lfo = engine.addModule({
+  name: "osc",
+  moduleType: ModuleType.Oscillator,
+  props: { wave: "sine", frequency: 2 },
+});
+
+const vol = engine.addModule({
+  name: "vol",
+  moduleType: ModuleType.Volume,
+  props: { volume: 0.01 },
+});
+
+const master = engine.addModule({
+  name: "master",
+  moduleType: ModuleType.Master,
+  props: {},
+});
+
+engine.addRoute({
+  source: { moduleId: osc.id, ioName: "out" },
+  destination: { moduleId: vol.id, ioName: "in" },
+});
+engine.addRoute({
+  source: { moduleId: lfo.id, ioName: "out" },
+  destination: { moduleId: osc.id, ioName: "detune" },
+});
+engine.addRoute({
+  source: { moduleId: vol.id, ioName: "out" },
+  destination: { moduleId: master.id, ioName: "in" },
+});
+
+await engine.start();
+```
+
+Now, I'm challenging you to create a crazy patch, and believe it, it's possible even though we have very limited modules for now.
+
+## Before Close
+
+If you made the effort to read this post, please leave a comment or contact me. It is really important to me to hear your feedback.
+
+## what's next
+
+I don't know yet what Part 5 will be about, but I know for sure that sooner or later, I'll write the next part!
