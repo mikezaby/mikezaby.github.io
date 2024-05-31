@@ -17,6 +17,9 @@ dependencies:
   '@tailwindcss/typography':
     specifier: ^0.5.10
     version: 0.5.11(tailwindcss@3.4.1)
+  blibliki:
+    specifier: ^0.1.6
+    version: 0.1.6
   dd-audio-engine:
     specifier: 0.1.1
     version: 0.1.1
@@ -1092,6 +1095,14 @@ packages:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
 
+  /blibliki@0.1.6:
+    resolution: {integrity: sha512-PuutmmO66HAyCcaVy1bR+b/VjY72fA1jxsYStN4YsgMWHvIbkcLIaGKlSP8A/ulrMQEQLYxhCqzyB1GrErscsw==}
+    dependencies:
+      crypto-js: 4.2.0
+      lodash: 4.17.21
+      uuid: 9.0.1
+    dev: false
+
   /brace-expansion@1.1.11:
     resolution: {integrity: sha512-iCuPHDFgrHX7H2vEI/5xpz07zSHB00TpugqhmYtVmMO6518mCuRMoOYFldEBl0g187ufozdaHgWKcYFb61qGiA==}
     dependencies:
@@ -1250,6 +1261,10 @@ packages:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
+
+  /crypto-js@4.2.0:
+    resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    dev: false
 
   /cssesc@3.0.0:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
